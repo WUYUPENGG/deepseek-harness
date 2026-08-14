@@ -180,6 +180,14 @@ export interface RunProfileOptions {
   patchFiles: readonly string[]
   /** The invocation's inner arguments, handed to the tree through `ctx.cmdlineArgs`. */
   args: readonly string[]
+  /**
+   * Optional installed-host base for bare package names in closed packaged
+   * runtimes (single-file executables). When set, the loader resolves bare
+   * plugin specifiers from this base instead of the profile directory's
+   * module fallback, which cannot resolve the snapshot paths a packaged
+   * runtime uses. See {@link mountRootInclude}.
+   */
+  bareModuleBaseUrl?: string
 }
 
 /**
@@ -256,7 +264,7 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
       args: options.args,
       exit: code => void shutdown.shutdown(code),
     })
-  })
+  }, options.bareModuleBaseUrl)
   app.current = ctx
   // A surface can dispose the whole tree while boot or this post-boot watcher
   // setup is still in flight — a signal, or a fast one-shot's appExit. Loader
@@ -275,23 +283,28 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
       // watch-only instance with no module roots — cordis.patch.yml edits stay
       // live on every long-lived surface. A silent skip would break the
       // documented hot-reload contract. HMR injects the timer service, which a
-      // bare custom profile may not mount either.
-      if (ctx.get('hmr') === undefined) {
-        if (ctx.get('timer') === undefined) {
-          await ctx.loader.create({ name: '@deepseek-ai/cordis-plugin-timer' })
+      // bare custom profile may not mount either. Packaged runtimes skip the
+      // watch-only instance and its patch watchers: the single-file closure
+      // cannot realpath its own snapshot module URL, and desktop users edit
+      // patches through the app, not the filesystem.
+      if (process.env.DSH_PACKAGED_RUNTIME !== '1') {
+        if (ctx.get('hmr') === undefined) {
+          if (ctx.get('timer') === undefined) {
+            await ctx.loader.create({ name: '@deepseek-ai/cordis-plugin-timer' })
+          }
+          await ctx.loader.create({ name: '@deepseek-ai/cordis-plugin-hmr', config: { root: [] } })
         }
-        await ctx.loader.create({ name: '@deepseek-ai/cordis-plugin-hmr', config: { root: [] } })
+        await watchUserPatches(ctx, {
+          binName: NAME,
+          filename: composed.profile.patchPath,
+          compose: composeLive,
+        })
+        await watchUserPatches(ctx, {
+          binName: NAME,
+          filename: homePatchPath(),
+          compose: composeLive,
+        })
       }
-      await watchUserPatches(ctx, {
-        binName: NAME,
-        filename: composed.profile.patchPath,
-        compose: composeLive,
-      })
-      await watchUserPatches(ctx, {
-        binName: NAME,
-        filename: homePatchPath(),
-        compose: composeLive,
-      })
     } catch (error) {
       suppressShutdownError(ctx, signalShutdown.signal, error)
     }

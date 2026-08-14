@@ -1,0 +1,137 @@
+name: Build desktop installers
+
+# Builds the DeepSeek Harness desktop installers on each target platform.
+# Each platform builds its own single-file dsh-web runtime (native Node 24 +
+# full closure) and then packages it with the Electron shell:
+#   macOS  -> .dmg / .zip
+#   Windows -> .exe (NSIS) / portable
+#   Linux  -> .AppImage / .deb
+# Windows is a documented non-goal for the single-file runtime (upstream
+# stance), so the Windows job builds the runtime with the system Node instead
+# of pkg; see apps/desktop/README.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      targets:
+        description: 'Comma-separated targets: mac, win, linux (empty = all)'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  mac:
+    name: macOS installer
+    runs-on: macos-latest
+    if: github.event_name == 'workflow_dispatch' && (inputs.targets == '' || contains(inputs.targets, 'mac'))
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build dsh
+        run: pnpm run build
+
+      - name: Build single-file web runtime
+        run: pnpm exec tsx scripts/build-exe-for-web.ts
+
+      - name: Stage runtime into desktop shell
+        run: pnpm --filter @deepseek-ai/dsh-desktop exec node scripts/stage-runtime.mjs
+
+      - name: Build installers
+        run: pnpm --filter @deepseek-ai/dsh-desktop exec electron-builder --mac
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dsh-macos-installer
+          path: |
+            apps/desktop/dist/*.dmg
+            apps/desktop/dist/*.zip
+
+  win:
+    name: Windows installer
+    runs-on: windows-latest
+    if: github.event_name == 'workflow_dispatch' && (inputs.targets == '' || contains(inputs.targets, 'win'))
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build dsh
+        run: pnpm run build
+
+      - name: Stage CLI runtime (system Node carrier)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force apps/desktop/runtime-staging
+          Copy-Item node_modules/@deepseek-ai/dsh/lib/*.js apps/desktop/runtime-staging/
+
+      - name: Build installers
+        run: pnpm --filter @deepseek-ai/dsh-desktop exec electron-builder --win
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dsh-windows-installer
+          path: |
+            apps/desktop/dist/*.exe
+
+  linux:
+    name: Linux installer
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'workflow_dispatch' && (inputs.targets == '' || contains(inputs.targets, 'linux'))
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build dsh
+        run: pnpm run build
+
+      - name: Build single-file web runtime
+        run: pnpm exec tsx scripts/build-exe-for-web.ts --targets=node24-linux-x64
+
+      - name: Stage runtime into desktop shell
+        run: pnpm --filter @deepseek-ai/dsh-desktop exec node scripts/stage-runtime.mjs
+
+      - name: Build installers
+        run: pnpm --filter @deepseek-ai/dsh-desktop exec electron-builder --linux
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dsh-linux-installer
+          path: |
+            apps/desktop/dist/*.AppImage
+            apps/desktop/dist/*.deb

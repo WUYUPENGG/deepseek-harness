@@ -29,11 +29,17 @@ const invocation = parseDshArgs(process.argv.slice(2), readVersion())
 switch (invocation.mode) {
   case 'profile': {
     const { runProfile } = await import('./profile-boot.ts')
+    // In a packaged single-file runtime, bare plugins resolve from the
+    // snapshot-embedded closure anchored at this module; the desktop shell
+    // sets DSH_PACKAGED_RUNTIME=1. A source checkout leaves it unset so
+    // user-installed plugins keep resolving from the profile fallback.
+    const packagedBase = process.env.DSH_PACKAGED_RUNTIME === '1' ? import.meta.url : undefined
     await runProfile({
       environment: loadLayeredEnv('dsh'),
       profile: invocation.profile,
       patchFiles: invocation.patches,
       args: invocation.args,
+      ...(packagedBase === undefined ? {} : { bareModuleBaseUrl: packagedBase }),
     })
     break
   }

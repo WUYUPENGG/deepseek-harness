@@ -1,0 +1,68 @@
+{
+  "name": "@deepseek-ai/dsh-desktop",
+  "description": "Desktop shell for DeepSeek Harness: an Electron window over the dsh Web GUI served by the bundled single-file dsh-web runtime.",
+  "version": "0.1.0-rc.5",
+  "type": "module",
+  "main": "electron/main.js",
+  "private": true,
+  "scripts": {
+    "build:runtime": "tsx ../../scripts/build-exe-for-web.ts",
+    "build:runtime:skip": "tsx ../../scripts/build-exe-for-web.ts --skip-build",
+    "start": "electron .",
+    "dist:mac": "node scripts/stage-runtime.mjs --platform=macos && electron-builder --mac",
+    "dist:win": "node scripts/stage-runtime.mjs --platform=win32 && electron-builder --win",
+    "dist:linux": "node scripts/stage-runtime.mjs --platform=linux && electron-builder --linux",
+    "dist": "node scripts/stage-runtime.mjs && electron-builder"
+  },
+  "build": {
+    "appId": "ai.deepseek.harness",
+    "productName": "DeepSeek Harness",
+    "asar": true,
+    "files": [
+      "electron/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "runtime-staging/dsh-web",
+        "to": "runtime/dsh-web"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "extraResources": [
+        {
+          "from": "runtime-staging/dsh-web-spawn-helper",
+          "to": "runtime/dsh-web-spawn-helper"
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Development",
+      "maintainer": "DeepSeek AI <opensource@deepseek.com>"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^26.0.12"
+  }
+}

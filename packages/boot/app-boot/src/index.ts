@@ -768,7 +768,16 @@ export async function boot(
   try {
     ctx.baseUrl = pathToFileURL(dirname(absoluteConfigPath)).href + '/'
     ctx.provide('dshHomePath', dshHomePath)
-    await ctx.plugin(Loader)
+    // In a closed packaged runtime (bareModuleBaseUrl set), the Loader's
+    // baseUrl drives bare-specifier resolution for entries mounted at runtime
+    // (e.g. a picker backend chosen by a boot-time probe). Point it at the
+    // snapshot-embedded install directory so those resolves stay inside the
+    // closure instead of the profile directory's module fallback, whose
+    // symlinks target the packaged snapshot and cannot be followed from a
+    // real filesystem path.
+    await ctx.plugin(Loader, bareModuleBaseUrl === undefined
+      ? undefined
+      : { baseUrl: new URL('.', bareModuleBaseUrl).href })
     await prepare?.(ctx)
     stage = 'plugin tree failed to load'
     await mountRootInclude(ctx, absoluteConfigPath, patches, bareModuleBaseUrl)
