@@ -42,6 +42,11 @@ pipeline {
             defaultValue: false,
             description: '跳过 pkg 单文件运行时构建（复用 workspace 已有的 dist-exe 产物，用于重试打包阶段）'
         )
+        booleanParam(
+            name: 'SIGN',
+            defaultValue: false,
+            description: '使用 Jenkins 凭据对安装包签名（macOS: Developer ID 签名 + 公证；Windows: Authenticode）。凭据配置见 接入指南-签名.md'
+        )
     }
 
     environment {
@@ -94,8 +99,23 @@ pipeline {
                 sh "pnpm exec tsx scripts/build-exe-for-web.ts ${params.SKIP_RUNTIME_BUILD ? '--skip-build' : ''}"
                 // 2) 暂存 macOS 运行时（也可用 dist:mac 脚本：stage-runtime + electron-builder --mac）
                 sh 'pnpm --filter @deepseek-ai/dsh-desktop exec node scripts/stage-runtime.mjs --platform=macos --arch=arm64'
-                // 3) 打包 .dmg/.zip
-                sh 'pnpm --filter @deepseek-ai/dsh-desktop exec electron-builder --mac --arm64'
+                // 3) 打包 .dmg/.zip；勾选 SIGN 时用 Jenkins 凭据签名并公证
+                script {
+                    if (params.SIGN) {
+                        withCredentials([
+                            string(credentialsId: 'macos-csc-b64', variable: 'CSC_LINK'),
+                            string(credentialsId: 'macos-csc-password', variable: 'CSC_KEY_PASSWORD'),
+                            string(credentialsId: 'apple-api-key', variable: 'APPLE_API_KEY'),
+                            string(credentialsId: 'apple-api-key-id', variable: 'APPLE_API_KEY_ID'),
+                            string(credentialsId: 'apple-api-issuer', variable: 'APPLE_API_ISSUER'),
+                            string(credentialsId: 'apple-team-id', variable: 'APPLE_TEAM_ID')
+                        ]) {
+                            sh 'pnpm --filter @deepseek-ai/dsh-desktop exec electron-builder --mac --arm64 -c.mac.notarize=true'
+                        }
+                    } else {
+                        sh 'pnpm --filter @deepseek-ai/dsh-desktop exec electron-builder --mac --arm64'
+                    }
+                }
                 archiveArtifacts artifacts: 'apps/desktop/dist/*.dmg,apps/desktop/dist/*.zip,apps/desktop/dist/*.blockmap', fingerprint: true, allowEmptyArchive: true
             }
         }
@@ -108,7 +128,18 @@ pipeline {
                 // 2) 显式暂存 win32+x64 运行时 + electron-builder 打包 NSIS/portable
                 //    （等价于 dist:win 脚本，这里显式指定架构避免默认架构不一致）
                 sh 'pnpm --filter @deepseek-ai/dsh-desktop exec node scripts/stage-runtime.mjs --platform=win32 --arch=x64'
-                sh 'pnpm --filter @deepseek-ai/dsh-desktop exec electron-builder --win --x64'
+                script {
+                    if (params.SIGN) {
+                        withCredentials([
+                            string(credentialsId: 'win-csc-b64', variable: 'WIN_CSC_LINK'),
+                            string(credentialsId: 'win-csc-password', variable: 'WIN_CSC_KEY_PASSWORD')
+                        ]) {
+                            sh 'pnpm --filter @deepseek-ai/dsh-desktop exec electron-builder --win --x64'
+                        }
+                    } else {
+                        sh 'pnpm --filter @deepseek-ai/dsh-desktop exec electron-builder --win --x64'
+                    }
+                }
                 archiveArtifacts artifacts: 'apps/desktop/dist/*.exe,apps/desktop/dist/*.blockmap', fingerprint: true, allowEmptyArchive: true
             }
         }
