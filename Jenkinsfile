@@ -104,7 +104,7 @@ pipeline {
             when { expression { params.TARGETS == 'all' || params.TARGETS == 'win' } }
             steps {
                 // 1) 在 macOS 上交叉构建 Windows x64 单文件后端（pkg 支持跨平台出 PE）
-                sh "pnpm exec tsx scripts/build-exe-for-web.ts --targets=node24-win32-x64 ${params.SKIP_RUNTIME_BUILD ? '--skip-build' : ''}"
+                sh "pnpm exec tsx scripts/build-exe-for-web.ts --targets=node24-win-x64 ${params.SKIP_RUNTIME_BUILD ? '--skip-build' : ''}"
                 // 2) 显式暂存 win32+x64 运行时 + electron-builder 打包 NSIS/portable
                 //    （等价于 dist:win 脚本，这里显式指定架构避免默认架构不一致）
                 sh 'pnpm --filter @deepseek-ai/dsh-desktop exec node scripts/stage-runtime.mjs --platform=win32 --arch=x64'
