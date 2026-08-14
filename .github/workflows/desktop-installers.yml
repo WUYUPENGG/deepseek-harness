@@ -6,9 +6,8 @@ name: Build desktop installers
 #   macOS  -> .dmg / .zip
 #   Windows -> .exe (NSIS) / portable
 #   Linux  -> .AppImage / .deb
-# Windows is a documented non-goal for the single-file runtime (upstream
-# stance), so the Windows job builds the runtime with the system Node instead
-# of pkg; see apps/desktop/README.md.
+# Windows uses the same pkg single-file runtime (cross-built from the Windows
+# runner); upstream lists win32 as a CI non-goal, but pkg produces PE binaries.
 
 on:
   workflow_dispatch:
@@ -48,11 +47,8 @@ jobs:
       - name: Build single-file web runtime
         run: pnpm exec tsx scripts/build-exe-for-web.ts
 
-      - name: Stage runtime into desktop shell
-        run: pnpm --filter @deepseek-ai/dsh-desktop exec node scripts/stage-runtime.mjs
-
       - name: Build installers
-        run: pnpm --filter @deepseek-ai/dsh-desktop exec electron-builder --mac
+        run: pnpm --filter @deepseek-ai/dsh-desktop run dist:mac
 
       - uses: actions/upload-artifact@v7
         with:
@@ -83,14 +79,11 @@ jobs:
       - name: Build dsh
         run: pnpm run build
 
-      - name: Stage CLI runtime (system Node carrier)
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force apps/desktop/runtime-staging
-          Copy-Item node_modules/@deepseek-ai/dsh/lib/*.js apps/desktop/runtime-staging/
+      - name: Build single-file web runtime
+        run: pnpm exec tsx scripts/build-exe-for-web.ts --targets=node24-win-x64
 
       - name: Build installers
-        run: pnpm --filter @deepseek-ai/dsh-desktop exec electron-builder --win
+        run: pnpm --filter @deepseek-ai/dsh-desktop run dist:win
 
       - uses: actions/upload-artifact@v7
         with:
@@ -123,11 +116,8 @@ jobs:
       - name: Build single-file web runtime
         run: pnpm exec tsx scripts/build-exe-for-web.ts --targets=node24-linux-x64
 
-      - name: Stage runtime into desktop shell
-        run: pnpm --filter @deepseek-ai/dsh-desktop exec node scripts/stage-runtime.mjs
-
       - name: Build installers
-        run: pnpm --filter @deepseek-ai/dsh-desktop exec electron-builder --linux
+        run: pnpm --filter @deepseek-ai/dsh-desktop run dist:linux
 
       - uses: actions/upload-artifact@v7
         with:

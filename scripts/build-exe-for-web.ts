@@ -170,15 +170,23 @@ const BuildCli = {
     const parsed = parseArgs({
       args: argv,
       options: {
-        targets: { type: 'string', default: '' },
-        'skip-build': { type: 'boolean', default: false },
-        'dry-run': { type: 'boolean', default: false },
+        targets: { type: 'string' },
+        'skip-build': { type: 'boolean' },
+        'dry-run': { type: 'boolean' },
       },
     })
-    const rawTargets = parsed.values.targets ?? ''
-    const targets = rawTargets === ''
+    const targets = parsed.values.targets === undefined
       ? [Target.host()]
-      : rawTargets.split(',').map(raw => raw.trim()).filter(Boolean).map(Target.parse)
+      : parsed.values.targets.split(',').map(part => part.trim()).filter(part => part !== '').map(spec => Target.parse(spec))
+    if (targets.length === 0) throw new Error('build-exe-for-web: --targets is empty.')
+    const seen = new Set<string>()
+    for (const target of targets) {
+      const key = `${target.platform}-${target.arch}`
+      if (seen.has(key)) {
+        throw new Error(`build-exe-for-web: duplicate platform-arch ${key} in --targets; canonical product names would collide.`)
+      }
+      seen.add(key)
+    }
     return {
       targets,
       skipBuild: parsed.values['skip-build'] === true,

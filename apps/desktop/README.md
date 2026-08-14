@@ -91,15 +91,22 @@ pkg 单文件为非目标(与上游一致),工作流给出系统 Node 承载的�
 | 目标 | 安装包 | 构建环境 | 说明 |
 |---|---|---|---|
 | macOS | `.dmg`、`.zip` | macOS (Apple Silicon/Intel) | 已验证:`.app` 独立运行 + `.zip` 分发 |
-| Windows | `.exe` (NSIS/portable) | Windows | 单文件后端在 Windows 上属非目标(与上游一致),Windows 安装包请按需评估 |
+| Windows | `.exe` (NSIS/portable) | Windows(或 macOS 交叉构建) | 已构建验证:单文件后端为 PE32+ x64,pkg 交叉构建可用 |
 | Linux | `.AppImage`、`.deb` | Linux (x64/arm64) | 依赖 Landlock 的沙箱能力为 Linux 专属,缺失时优雅降级 |
 
-> 单文件后端的平台标签沿用上游 `build-exe-for-python-sdk.ts` 的设计:Windows 是
-> 文档化的非目标。macOS/Linux 的 x64 与 arm64 均有 CI 构建记录。
+> Windows 单文件后端:上游 `build-exe-for-python-sdk.ts` 把 win32 列为文档化非目标
+> (仅指其 CI 未覆盖),但 `@yao-pkg/pkg` 本身支持 Windows 目标 —— 本仓库
+> `build-exe-for-web.ts` 已验证可交叉构建 `node24-win-x64`(PE 二进制),
+> node-pty 的 win32 prebuilds(winpty.dll / winpty-agent.exe / conpty)会一并打进快照。
 >
-> 已知问题:electron-builder 的 DMG 目标在本机系统 Python 3.14 下报
-> `plistlib.InvalidFileException`(dmgbuild 兼容问题);`.zip` 分发完全可用,
-> `.dmg` 请在 CI(macOS 官方 runner)或系统 Python ≤3.12 的环境构建。
+> 已知问题:
+> - electron-builder 的 DMG 目标在本机系统 Python 3.14 下报
+>   `plistlib.InvalidFileException`(dmgbuild 兼容问题);`.zip` 分发完全可用,
+>   `.dmg` 请在 CI(macOS 官方 runner)或系统 Python ≤3.12 的环境构建。
+> - 从 macOS 交叉构建 Windows 安装包时,需设置
+>   `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 与
+>   `ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/`
+>   以绕过 GitHub 下载超时,并用 `--x64` 指定架构。
 
 ## 说明
 
