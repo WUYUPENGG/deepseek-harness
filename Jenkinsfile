@@ -61,7 +61,7 @@ pipeline {
         stage('检出代码') {
             steps {
                 checkout scm
-                sh 'git checkout ${params.BRANCH} || true'
+                sh "git checkout ${params.BRANCH} || true"
                 sh 'git rev-parse --short HEAD'
             }
         }
