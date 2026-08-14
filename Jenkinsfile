@@ -45,6 +45,8 @@ pipeline {
     }
 
     environment {
+        // agent 的 SSH 非交互 shell 不加载 nvm/用户 profile，手动把 Node 24 + pnpm 的 bin 加进 PATH
+        PATH = "${env.PATH}:/Users/wuyupeng/.nvm/versions/node/v24.15.0/bin"
         // 构建机（宿主 Mac）如需走本地代理访问 GitHub/npm，取消下面注释并按实际端口填写
         // HTTP_PROXY  = 'http://127.0.0.1:7897'
         // HTTPS_PROXY = 'http://127.0.0.1:7897'
