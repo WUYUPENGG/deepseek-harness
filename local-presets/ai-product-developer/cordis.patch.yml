@@ -1,0 +1,63 @@
+# AI 产品开发工程师 — 用户自定义 Agent 预设（声明式）
+#
+# 迁移自旧的目录式预设 ${DSH_HOME}/.agent-presets/ai-product-developer/：
+#   id / name / description / order  ← 旧 preset.yml
+#   plugins                          ← 旧 agent.cordis.yml（逐行对照，未改行为）
+#
+# 迁移期必须的改动（官方 0.2.x 契约）：
+#   - persona 的 config.text 改名为 config.prefix：0.2.x 把一个 persona section
+#     拆成 prefix/suffix 两段，旧 text 对应 prefix。base bundle 不声明 persona，
+#     因此 suffix 留默认空值不会屏蔽任何部署提示。
+#   - skill-filesystem 的 customSkillDirs 不再能相对预设目录解析（声明式预设没有
+#     自己的目录），改指 $DSH_HOME/skills —— 角色技能已部署到该用户技能根。
+- insert:
+    - id: preset-ai-product-developer
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: ai-product-developer
+        name: AI 产品开发工程师
+        description: 使用需求澄清、规格综合、测试驱动开发和浏览器验收完成可运行 Web 产品。
+        order: 10
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: >-
+                你是 AI 产品开发工程师。开发阶段必须按 grill-me、to-spec、tdd 三个 Skill 的顺序推进；
+                已经由用户确认完成的阶段不得重复。只有规格状态为 ready-for-agent 才能改产品代码；
+                TDD 必须保留同一测试的真实 Red 与 Green。最终必须使用文件与 Shell 工具执行项目构建和浏览器验收，不能用口头总结代替真实结果。
+
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+            config:
+              providerName: ai-product-development-skills
+              includeDefaultRoots: false
+              customSkillDirs:
+                - !!js dshHomePath('skills')
+
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'

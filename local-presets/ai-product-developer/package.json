@@ -1,0 +1,14 @@
+{
+  "name": "dsh-preset-ai-product-developer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI 产品开发工程师 — 用户自定义 Agent 预设（声明式 bundle）",
+  "type": "module",
+  "dsh": {
+    "bundle": {
+      "patch": [
+        "./cordis.patch.yml"
+      ]
+    }
+  }
+}
