@@ -72,9 +72,35 @@ cd "$DSH_HOME/profiles/desktop" && pnpm install
 
 ## 验证
 
+命令行校验（推荐，可重复执行）：
+
+```sh
+cd /path/to/dsh-clone
+node --import tsx local-presets/verify-preset-roster.ts preset-verify
+```
+
+脚本引导指定 profile 后读取预设注册表，逐条打印 `id / 名称 / order` 与挂载诊断。成功输出：
+
+```
+  - ai-product-developer   AI 产品开发工程师  order=10
+  ✓ 已注册且挂载成功 —— AI 产品开发工程师 / order 10
+```
+
+挂载失败会在同一行打印原因（失败插件名 + 信息），例如：
+
+```
+  - bad-control  反向对照  order=99  BROKEN: bogus (@deepseek-ai/dsh-no-such-plugin): never started
+```
+
+该方法已用反向对照验证：故意引用不存在的插件时会被判为 `BROKEN`，因此干净记录代表真实挂载成功。
+
+在界面里验证：
+
 1. 启动 dsh Web 或 Desktop，打开 Agent 预设选择器，应出现「AI 产品开发工程师」。
 2. 选中后确认技能可见：`grill-me`、`to-spec`、`tdd` 出现在技能列表。
-3. 若预设未出现或挂载失败，检查 profile 启动日志里的 `ai-product-developer` 激活审计条目——声明式预设**挂载失败会保留在名单中并拒绝新绑定**，不会静默跳过。
+
+注意：**只看启动日志不足以判断挂载结果**。挂载失败不阻止应用启动，且失败只在读取名单（`list()`）时通过审计暴露，不会在启动日志里打印。
+
 
 ## 说明
 
