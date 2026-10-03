@@ -53,6 +53,10 @@ allowBuilds:
   electron-winstaller: false
   # Store-index rewriting only needs msgpackr's portable JavaScript codec.
   msgpackr-extract: false
+  # Desktop packaging needs Electron's postinstall binary download. Local builds
+  # set this to true; fetching the binary may require ELECTRON_MIRROR on networks
+  # that cannot reach the default GitHub release host.
+  electron: true
 
 minimumReleaseAgeExclude:
   # Office engines and their API are qualified and released together by the kit repository.
